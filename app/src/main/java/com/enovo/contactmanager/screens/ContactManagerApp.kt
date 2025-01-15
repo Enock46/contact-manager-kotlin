@@ -23,7 +23,7 @@ fun ContactManagerApp() {
 
     // Filter contacts based on search query
     val filteredContacts = contacts.filter {
-        it.name.contains(searchQuery, ignoreCase = true)
+        it.name.contains(searchQuery, ignoreCase = true)o
     }
 
     Scaffold(
