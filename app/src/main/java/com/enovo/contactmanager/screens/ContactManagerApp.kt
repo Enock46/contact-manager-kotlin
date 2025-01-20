@@ -1,5 +1,7 @@
 package com.enovo.contactmanager.screens
 
+import SQLiteHelper
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,20 +12,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.*
 import androidx.compose.ui.unit.dp
-import com.enovo.contactmanager.DataModel.Contact
+import com.enovo.contactmanager.dataModel.Contact
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ContactManagerApp() {
-    var contacts by remember { mutableStateOf(listOf<Contact>()) }
+fun ContactManagerApp(context: Context) {
+    val dbHelper = remember { SQLiteHelper(context) }
+    var contacts by remember { mutableStateOf(dbHelper.getAllContacts()) }
     var isPopupOpen by remember { mutableStateOf(false) }
     var selectedContact by remember { mutableStateOf<Contact?>(null) }
     var searchQuery by remember { mutableStateOf("") }
+    var contactToDelete by remember { mutableStateOf<Contact?>(null) }
 
-    // Filter contacts based on search query
     val filteredContacts = contacts.filter {
-        it.name.contains(searchQuery, ignoreCase = true)o
+        it.name.contains(searchQuery, ignoreCase = true) ||
+                it.email.contains(searchQuery, ignoreCase = true) ||
+                it.phone.contains(searchQuery, ignoreCase = true)
     }
 
     Scaffold(
@@ -40,25 +46,23 @@ fun ContactManagerApp() {
             )
         },
         floatingActionButton = {
-            // FAB appears only if contacts are less than MAX_CONTACTS
-            if (contacts.size < MAX_CONTACTS) {
-                FloatingActionButton(onClick = {
-                    selectedContact = null
-                    isPopupOpen = true
-                }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Contact")
-                }
+            FloatingActionButton(onClick = {
+                selectedContact = null
+                isPopupOpen = true
+            }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Contact")
             }
-        },
-        floatingActionButtonPosition = FabPosition.End
+        }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Search Field
             TextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("Search Contacts") },
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                placeholder = { Text("Name, Email, or Phone") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             )
 
             LazyColumn(
@@ -72,34 +76,55 @@ fun ContactManagerApp() {
                             selectedContact = it
                             isPopupOpen = true
                         },
-                        onDelete = { contactToDelete ->
-                            contacts = contacts.filter { it != contactToDelete }
-                        },
-
-
-
+                        onDelete = { contactToDelete = it }
                     )
                 }
             }
         }
     }
 
-    // Add/Edit Contact Dialog
     if (isPopupOpen) {
         AddEditContactDialog(
             contact = selectedContact,
             onSave = { newContact ->
-                contacts = if (selectedContact == null) {
-                    contacts + newContact
+                if (selectedContact == null) {
+                    dbHelper.insertContact(newContact.name, newContact.email, newContact.phone)
                 } else {
-                    contacts.map { if (it == selectedContact) newContact else it }
+                    dbHelper.updateContact(
+                        selectedContact!!.id,
+                        newContact.name,
+                        newContact.email,
+                        newContact.phone
+                    )
                 }
+                contacts = dbHelper.getAllContacts()
                 isPopupOpen = false
             },
             onCancel = { isPopupOpen = false }
         )
     }
+
+    if (contactToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { contactToDelete = null },
+            title = { Text("Delete Contact?") },
+            text = { Text("Are you sure you want to delete ${contactToDelete?.name}?") },
+            confirmButton = {
+                Button(onClick = {
+                    dbHelper.deleteContact(contactToDelete!!.id)
+                    contacts = dbHelper.getAllContacts()
+                    contactToDelete = null
+                }) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { contactToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
-// Define a constant for the maximum number of contacts
-const val MAX_CONTACTS = 10
+

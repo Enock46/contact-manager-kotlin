@@ -1,10 +1,8 @@
-package com.enovo.contactmanager.DataModel
-
-import android.net.Uri
+package com.enovo.contactmanager.dataModel
 
 data class Contact(
+    val id: String = "0",
     val name: String,
-    val phone: String,
     val email: String,
-    val photoUri: Uri? = null // Optional image URI
+    val phone: String
 )

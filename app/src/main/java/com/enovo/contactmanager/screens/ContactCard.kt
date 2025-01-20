@@ -19,7 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.*
-import com.enovo.contactmanager.DataModel.*
+import com.enovo.contactmanager.dataModel.*
 
 
 
